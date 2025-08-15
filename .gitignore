@@ -1,0 +1,5 @@
+# Ignorar de resultados 'scraper'
+/data
+
+# Ignorar carpetas de 'scraper'
+/scraper
