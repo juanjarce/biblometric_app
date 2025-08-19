@@ -1,2 +1,47 @@
-# Ignorar de resultados 'scraper'
-/data
+# Entorno virtual
+.venv/
+venv/
+ENV/
+env/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.logs
+
+# Datos / descargas
+downloads/
+data/raw/
+# si quieres ignorar processed también:
+# data/processed/
+
+# Entornos / secretos
+.env
+.env.local
+.env.*.local
+.env.* 
+secrets.*
+*.pem
+*.key
+
+# Selenium / webdriver caches
+geckodriver.log
+chromedriver.log
+
+# OS generated
+Desktop.ini
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Build / dist
+build/
+dist/
+*.egg-info/

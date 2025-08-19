@@ -1,1 +1,4 @@
+bibtexparser
+rapidfuzz
 selenium
+webdriver-manager
