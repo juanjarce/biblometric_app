@@ -19,7 +19,7 @@ def scrape_acm_bibtex(driver, wait, download_dir, pag_inicio: int, prim_pag, ult
 
     # Ir a la página de ACM
     if prim_pag:
-        url = f"https://dl.acm.org/action/doSearch?AllField=computational+thinking&startPage={pag_inicio}&pageSize=50"
+        url = f"https://dl.acm.org/action/doSearch?AllField=generative+artificial+intelligence&startPage={pag_inicio}&pageSize=50"
         driver.get(url)
 
     try:

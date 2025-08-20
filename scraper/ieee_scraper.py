@@ -28,7 +28,7 @@ def scrape_ieee_bibtex(page: int):
     wait = WebDriverWait(driver, 10)
 
     # Ir a la página de IEEE
-    url = f"https://ieeexplore.ieee.org/search/searchresult.jsp?newsearch=true&queryText=computational%20thinking&highlight=true&returnType=SEARCH&matchPubs=true&rowsPerPage=100&pageNumber={page}&returnFacets=ALL"
+    url = f"https://ieeexplore.ieee.org/search/searchresult.jsp?newsearch=true&queryText=generative%20artificial%20intelligence&highlight=true&returnType=SEARCH&matchPubs=true&rowsPerPage=100&pageNumber={page}&returnFacets=ALL"
     driver.get(url)
 
     try:

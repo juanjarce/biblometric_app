@@ -28,7 +28,7 @@ def scrape_acm_bibtex():
     wait = WebDriverWait(driver, 10)
 
     # Ir a la página de ACM
-    url = f"https://dl.acm.org/action/doSearch?AllField=computational+thinking&startPage=0&pageSize=50"
+    url = f"https://dl.acm.org/action/doSearch?AllField=generative+artificial+intelligence&startPage=0&pageSize=50"
     driver.get(url)
 
     try:
