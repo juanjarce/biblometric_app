@@ -18,7 +18,7 @@ __pycache__/
 
 # Datos / descargas
 downloads/
-# data/raw/
+data/raw/
 # si quieres ignorar processed también:
 # data/processed/
 
