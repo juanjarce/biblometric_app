@@ -2,15 +2,14 @@
 """
 scraper/merge_bib.py
 
-Script para fusionar entradas bibliográficas de IEEE y una o más carpetas ACM.
-- Orden de emparejamiento: ISBN -> título difuso (fuzzy)
+Script para fusionar entradas bibliográficas de IEEE y con las de ACM.
 - Salidas:
     * .bib fusionado
     * Reporte CSV con el mapeo (tipo de match, score, archivos fuente)
 Uso:
-    python scraper/merge_bib.py \
+python3 utils/merge_bib.py \
         --ieee-dir data/raw/IEEE \
-        --acm-dirs data/raw/ACM,data/raw/ACM2,data/raw/ACM3 \
+        --acm-dirs data/raw/ACM3 \
         --out-dir data/processed
 """
 
@@ -365,8 +364,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-"""
-para ejecutar utilizar lo siguiente: 
- python utils\merge_bib.py --ieee-dir data/raw/IEEE --acm-dirs data/raw/ACM,data/raw/ACM2,data/raw/ACM3 --out-dir data/processed
-"""
