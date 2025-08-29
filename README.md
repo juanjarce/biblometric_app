@@ -1,4 +1,6 @@
 ## Cómo activar el entorno virtual
+python3 -m venv venv
+
 ## Para la ejecución de la API
 
 Antes de ejecutar el scraper o cualquier script del proyecto, asegúrate de activar el entorno virtual:

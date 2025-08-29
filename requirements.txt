@@ -2,3 +2,6 @@ bibtexparser
 rapidfuzz
 selenium
 webdriver-manager
+scikit-learn
+textdistance
+sentence-transformers
