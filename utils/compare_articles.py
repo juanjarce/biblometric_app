@@ -10,6 +10,16 @@ import argparse
 Ejemplo de entrada:
 python3 utils/compare_articles.py --compare_ids merged1,merged3
 """
+
+""""
+Función para obtener la etiqueta de los articulos con sus respectivos abstracts
+se traen en el formato:
+    {
+        "merged1": "texto del abstract 1",
+        "merged2": "texto del abstract 2",
+        ...
+    }
+"""
 def load_bib(path="data/processed/merged.bib"):
     with open(path, encoding="utf-8") as f:
         db = bibtexparser.load(f)
