@@ -12,3 +12,7 @@ kaleido
 wordcloud
 reportlab
 pycountry
+seaborn
+numpy
+nltk
+Pillow
