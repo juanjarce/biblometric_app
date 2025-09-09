@@ -2,15 +2,14 @@
 """
 scraper/merge_bib.py
 
-Script para fusionar entradas bibliográficas de IEEE y una o más carpetas ACM.
-- Orden de emparejamiento: ISBN -> título difuso (fuzzy)
+Script para fusionar entradas bibliográficas de IEEE y con las de ACM.
 - Salidas:
     * .bib fusionado
     * Reporte CSV con el mapeo (tipo de match, score, archivos fuente)
 Uso:
-    python scraper/merge_bib.py \
+python3 utils/merge_bib.py \
         --ieee-dir data/raw/IEEE \
-        --acm-dirs data/raw/ACM,data/raw/ACM2,data/raw/ACM3 \
+        --acm-dirs data/raw/ACM3 \
         --out-dir data/processed
 """
 
@@ -270,20 +269,6 @@ def merge_collections(
 
     return merged_results, mapping_rows
 
-def deduplicate_entries(entries: List[Dict]) -> List[Dict]:
-    seen = {}
-    for e in entries:
-        isbns = get_isbns_from_entry(e)
-        if isbns:
-            key = f"isbn:{','.join(sorted(isbns))}"
-        else:
-            key = f"title:{normalize_title(e.get('title',''))}"
-        if key in seen:
-            # fusionar con el existente
-            seen[key] = merge_entries([seen[key], e])
-        else:
-            seen[key] = e
-    return list(seen.values())
 
 # ---- Escritura de archivos ----
 def write_bib_and_csv(out_dir: Path, merged_results: List[Dict], mapping_rows: List[Dict], out_bib: str, out_csv: str) -> None:
@@ -374,17 +359,8 @@ def main():
 
     # Fusiona colecciones y escribe resultados
     merged_results, mapping_rows = merge_collections(ieee_entries, acm_entries_all, title_threshold=args.title_threshold)
-
-    # 🔥 Nuevo paso: deduplicación automática
-    deduped_results = deduplicate_entries(merged_results)
-
-    write_bib_and_csv(out_dir, deduped_results, mapping_rows, args.out_bib, args.out_csv)
+    write_bib_and_csv(out_dir, merged_results, mapping_rows, args.out_bib, args.out_csv)
 
 
 if __name__ == "__main__":
     main()
-
-"""
-para ejecutar utilizar lo siguiente: 
-python3 utils/merge_bib.py --ieee-dir data/raw/IEEE --acm-dirs data/raw/ACM,data/raw/ACM2,data/raw/ACM3 --out-dir data/processed
-"""
