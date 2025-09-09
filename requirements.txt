@@ -6,3 +6,9 @@ scikit-learn
 textdistance
 sentence-transformers
 matplotlib
+pandas
+plotly
+kaleido
+wordcloud
+reportlab
+pycountry
