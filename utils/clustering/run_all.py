@@ -9,7 +9,7 @@ Salidas en data/processed/:
  - clustering_metrics.csv
 
 Ejecución:
-    python -m utils.clustering.run_all
+    python3 utils/clustering/run_all.py
 
 """
 
@@ -19,15 +19,19 @@ import csv  # Para guardar resultados en CSV
 import math  # Para operaciones matemáticas
 import numpy as np  # Para manejo de matrices
 from typing import Optional  # Para anotaciones de tipo
+import sys
+
+# Se añade la carpeta raíz del proyecto al sys.path
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 # Importación de funciones de preprocesamiento y vectorización
-from .preprocess_and_vectorize import (
+from utils.clustering.preprocess_and_vectorize import (
     load_abstracts_from_bib,
     preprocess_abstracts,
     vectorize_texts,
 )
 # Importación de algoritmos de clustering y métricas
-from .hierarchical_algos import (
+from utils.clustering.hierarchical_algos import (
     run_average_linkage,
     run_complete_linkage,
     run_ward,
@@ -73,7 +77,7 @@ def main():
     pr = Path(__file__).resolve().parents[2]  # project root
     # Define la ruta al archivo merged.bib y al directorio de salida
     merged_bib = pr / "data" / "processed" / "merged.bib"
-    out_dir = pr / "data" / "processed"
+    out_dir = pr / "outputs" / "clustering_&_dendograms"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 1 Carga y preprocesa los abstracts
