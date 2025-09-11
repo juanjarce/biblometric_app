@@ -89,9 +89,9 @@ def main():
     keys, vectorizer, X = vectorize_texts(clean_pairs)  # Vectoriza los textos con TF-IDF
 
     # 2 Ejecuta los algoritmos de clustering jerárquico y guarda los dendrogramas
-    Z_avg, coph_avg = run_average_linkage(X, keys, out_dir, p=5, max_label_len=60, orientation="top")  # Average linkage
-    Z_comp, coph_comp = run_complete_linkage(X, keys, out_dir, p=5, max_label_len=60, orientation="top")  # Complete linkage
-    Z_ward, coph_ward, svd = run_ward(X, keys, out_dir, n_components=2, p=5, max_label_len=60, orientation="top")  # Ward linkage
+    Z_avg, coph_avg = run_average_linkage(X, keys, out_dir, p=6, max_label_len=60, orientation="top")  # Average linkage
+    Z_comp, coph_comp = run_complete_linkage(X, keys, out_dir, p=6, max_label_len=60, orientation="top")  # Complete linkage
+    Z_ward, coph_ward, svd = run_ward(X, keys, out_dir, n_components=2, p=6, max_label_len=60, orientation="top")  # Ward linkage
 
     # 3 Evalúa la calidad de los clusters usando silhouette para k en 2..8 (robusto contra NaNs)
     k_range = list(range(2, 9))  # Rango de valores de k a probar
