@@ -6,3 +6,7 @@ scikit-learn
 textdistance
 sentence-transformers
 matplotlib
+scipy
+nltk
+scikit-learn
+pandas
