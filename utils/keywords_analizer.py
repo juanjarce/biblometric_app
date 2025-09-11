@@ -70,7 +70,7 @@ def extract_top_terms(abstracts, top_n=15):
     return ranking[:top_n]
 
 """"
-Función para calcular la precisión en el rrango [-1, 1] de los nuevos términos
+Función para calcular la precisión en el rango [-1, 1] de los nuevos términos
 con los keywords iniciales de la categoría 'Concepts of Generative AI in Education'
 """
 def precision_new_terms(new_terms, keywords, threshold=60):
@@ -124,32 +124,56 @@ def plot_keyword_frequencies(freqs, output_path="outputs/keywords_analizer/keywo
 """"
 Función para generar la gráfica con los nuevos keywords
 los nuevos keywords son los 15 terminos principales en los abstracts de los articulos
-en los abstracts de los articulos
+en los abstracts de los articulos.
+Para cada keywords nuevo se muestran 2 tipos de información clave:
+- Frecuencia de aparición en los abstracts
+- TF-IDF: qué tan representativa es la palabra o término dentro de el conjunto de documentos (abstracts)
 """
-def plot_new_top_keywords(top_terms, output_path="outputs/keywords_analizer/new_top_keywords_.png"):
-    # Crear la carpeta si no existe
+def plot_new_terms_tfidf_vs_freq(abstracts, top_terms, output_path="outputs/keywords_analizer/new_terms_tfidf_freq.png"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    # Separar términos y scores
-    terms = [term for term, score in top_terms]
-    scores = [score for term, score in top_terms]
+    # Calcular frecuencias de cada termino en los abstracts
+    text = " ".join(abstracts.values()).lower()
+    freqs = {}
+    for term, score in top_terms:
+        pattern = re.escape(term.lower())
+        matches = re.findall(pattern, text)
+        freqs[term] = len(matches)
 
-    # Crear gráfico de barras horizontales
-    plt.figure(figsize=(10, 6))
-    plt.barh(terms[::-1], scores[::-1], color="skyblue")  # invertimos para que el mayor quede arriba
-    plt.xlabel("TF-IDF Score")
-    plt.title("Top 15 Keywords (TF-IDF)")
-    plt.tight_layout()
+    # Extraer los datos para las graficas
+    terms = [t for t, _ in top_terms]
+    tfidf_scores = [s for _, s in top_terms]
+    counts = [freqs[t] for t in terms]
 
-    # Guardar gráfica
-    plt.savefig(output_path)
+    # Gráfico combinado
+    fig, ax1 = plt.subplots(figsize=(12, 7))
+
+    # Barras para frecuencia
+    ax1.bar(terms, counts, color="skyblue", alpha=0.7, label="Frecuencia")
+    ax1.set_ylabel("Frecuencia", color="blue")
+    ax1.tick_params(axis="y", labelcolor="blue")
+    ax1.set_xticklabels(terms, rotation=45, ha="right")
+
+    # Eje secundario para TF-IDF
+    ax2 = ax1.twinx()
+    ax2.plot(terms, tfidf_scores, color="red", marker="o", linewidth=2, label="TF-IDF")
+    ax2.set_ylabel("TF-IDF Score", color="red")
+    ax2.tick_params(axis="y", labelcolor="red")
+
+    # Título y layout
+    plt.title("Top 15 términos: TF-IDF vs Frecuencia")
+    fig.tight_layout()
+
+    # Guardar
+    plt.savefig(output_path, dpi=300)
     plt.close()
 
-    print(f"[INFO] Gráfica guardada en {output_path}")
+    print(f"[INFO] Gráfica combinada guardada en {output_path}")
 
-import matplotlib.pyplot as plt
-import numpy as np
-
+"""
+Función para visualizar la precisión de los nuevos keywords con los keywords originales:
+Determina qué tan precisas son las nuevas palabras.
+"""
 def plot_precision_and_terms(precision, common_terms, output_path="outputs/keywords_analizer/precision_terms.png"):
     fig, axes = plt.subplots(1, 2, figsize=(14,6))
     
@@ -198,7 +222,7 @@ if __name__ == "__main__":
     # --- Términos principales (TF-IDF) ---
     top_terms = extract_top_terms(abstracts, top_n=15)
     # Generar gráfica
-    plot_new_top_keywords(top_terms)
+    plot_new_terms_tfidf_vs_freq(abstracts, top_terms)
     """
     print("\n=== Top términos por TF-IDF ===")
     for term, score in top_terms:
