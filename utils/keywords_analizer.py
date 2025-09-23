@@ -205,8 +205,8 @@ def plot_precision_and_terms(precision, common_terms, output_path="outputs/keywo
 
 ## --------------------------------------------------------------------------------------------------------------------------------
 # main
-if __name__ == "__main__":
-    # Se cargan los abstracts del 'merged.bib'
+def main_keywords_analizer():
+        # Se cargan los abstracts del 'merged.bib'
     abstracts = load_bib()
 
     # --- Frecuencias de keywords ---
@@ -238,3 +238,6 @@ if __name__ == "__main__":
     print(f"Precisión: {precision:.2f}")
     print(f"Términos en común: {overlap}")
     """
+
+if __name__ == "__main__":
+    main_keywords_analizer()

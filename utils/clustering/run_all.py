@@ -72,7 +72,7 @@ def safe_toarray(X):
     return np.asarray(X)
 
 
-def main():
+def main_dendrograms_analizer():
     # Obtiene la ruta raíz del proyecto
     pr = Path(__file__).resolve().parents[2]  # project root
     # Define la ruta al archivo merged.bib y al directorio de salida
@@ -146,4 +146,4 @@ def main():
 
 # Punto de entrada principal del script
 if __name__ == "__main__":
-    main()
+    main_dendrograms_analizer()

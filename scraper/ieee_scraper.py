@@ -102,7 +102,7 @@ def scrape_ieee_bibtex(page: int):
         driver.execute_script("arguments[0].click();", download_button)
         print("Descarga realizada")
 
-        time.sleep(7)
+        time.sleep(15)
 
         # Mover el archivo .bib descargado
         bib_files = sorted(Path(download_dir).glob("*.bib"), key=os.path.getmtime, reverse=True)
