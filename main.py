@@ -5,6 +5,7 @@ from scraper.acm_scraper3 import scrape_acm_bibtex
 from scraper.ieee_scraper import scrape_ieee_bibtex
 from utils.keywords_analizer import main_keywords_analizer
 from utils.clustering.run_all import main_dendrograms_analizer
+from utils.visuals_req5 import main_visuals_req5
 
 def run_acm_scraper():
     try:
@@ -55,6 +56,10 @@ def run_dendrograms_analyzer():
     main_dendrograms_analizer()
     print("\n Análisis completado. Dendrogramas generados en la carpeta de outputs.")
 
+def run_visuals_req5():
+    main_visuals_req5()
+    print("\n Análisis & Reportes completados. Información biblometrica generada en la carpeta de outputs.")
+
 def menu():
     while True:
         print("\n===== MENÚ PRINCIPAL =====")
@@ -64,7 +69,8 @@ def menu():
         print("4. Comparar artículos")
         print("5. Analizador de Keywords")
         print("6. Analizador de Similitud con Dendrogramas")
-        print("7. Salir")
+        print("7. Visualización información biblometrica general (Requerimiento 5)")
+        print("8. Salir")
 
         opcion = input("Selecciona una opción: ")
 
@@ -81,6 +87,8 @@ def menu():
         elif opcion == "6":
             run_dendrograms_analyzer()
         elif opcion == "7":
+            run_visuals_req5()
+        elif opcion == "8":
             print("Saliendo...")
             break
         else:
