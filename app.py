@@ -2,9 +2,11 @@ import os
 import streamlit as st
 from scraper.acm_scraper3 import scrape_acm_bibtex
 from scraper.ieee_scraper import scrape_ieee_bibtex
+from utils.merge_bib import merge_main
 from utils.keywords_analizer import main_keywords_analizer
 from utils.clustering.run_all import main_dendrograms_analizer
 from utils.visuals_req5 import main_visuals_req5
+from utils.compare_articles import run_comparison_from_ids
 import subprocess, time
 
 st.title("Menú Proyecto")
@@ -32,8 +34,7 @@ if st.button("Ejecutar Scraper IEEE"):
 # --- Merge Bib ---
 st.subheader("Merge Bib")
 if st.button("Ejecutar Merge Bib"):
-    subprocess.run(["python3", "utils/merge_bib.py", "--ieee-dir", "data/raw/IEEE",
-                    "--acm-dirs", "data/raw/ACM3", "--out-dir", "data/processed"])
+    merge_main()
     st.success("Merge completado ✅")
 
 # --- Comparar Artículos ---
@@ -42,19 +43,9 @@ ids = st.text_input("Ingrese los IDs (ej: merged1,merged3)")
 
 if st.button("Ejecutar Comparación"):
     if ids.strip():
-        result = subprocess.run(
-            ["python3", "utils/compare_articles.py", "--compare_ids", ids],
-            capture_output=True,
-            text=True
-        )
-
-        # Mostrar salida estándar
-        if result.stdout:
-            st.text_area("Resultados de la comparación:", result.stdout, height=300)
-
-        # Mostrar errores si existen
-        if result.stderr:
-            st.error(f"Errores detectados:\n{result.stderr}")
+        # Llamamos directamente a la función del módulo
+        result = run_comparison_from_ids(ids)
+        st.text_area("Resultados de la comparación:", result, height=300)
 
         st.success(f"Comparación completada ✅ con IDs: {ids}")
     else:

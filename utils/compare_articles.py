@@ -85,20 +85,35 @@ def compare_articles(abstracts, ids):
             print(" TF-IDF Cosine:", tfidf_cosine(s1, s2))
             print(" SBERT Cosine 1:", sbert_cosine(s1, s2))
             print(" SBERT Cosine 2:", compare_articles_sbert(s1, s2))
-            
+""""
+Misma función para comparar los abstracts de los articulos indicados
+Modificada para el uso de 'Streamlit' en el menu web
+"""
+def run_comparison_from_ids(ids_str):
+    abstracts = load_bib()
+    ids = ids_str.split(",")
+    output = []
+
+    n = len(ids)
+    for i in range(n):
+        for j in range(i+1, n):
+            s1, s2 = abstracts[ids[i]], abstracts[ids[j]]
+            output.append(f"\nComparando {ids[i]} vs {ids[j]}:")
+            output.append(f" Levenshtein: {levenshtein_sim(s1, s2)}")
+            output.append(f" Jaccard: {jaccard_sim(s1, s2)}")
+            output.append(f" Dice: {dice_sim(s1, s2)}")
+            output.append(f" TF-IDF Cosine: {tfidf_cosine(s1, s2)}")
+            output.append(f" SBERT Cosine 1: {sbert_cosine(s1, s2)}")
+            output.append(f" SBERT Cosine 2: {compare_articles_sbert(s1, s2)}")
+
+    return "\n".join(output)
+    
 # main
 if __name__ == "__main__":
-    # Configuración de los parametros para indicar los articulos a comparar
     parser = argparse.ArgumentParser(description="Herramienta de comparación de artículos")
-    parser.add_argument( "--compare_ids",
-                        type=str,
-                        help="IDs de artículos a comparar, separados por coma. Ej: --compare_ids merged1,merged2" )
-    
-    # Se instancian los parametros
+    parser.add_argument("--compare_ids", type=str, help="IDs de artículos a comparar, separados por coma. Ej: --compare_ids merged1,merged2")
     args = parser.parse_args()
-    # Se cargan los abstracts del 'merged_bib.py'
-    abstracts = load_bib()
-    # Se obtienen los ids de los articulos que se quieren comparar
+
     if args.compare_ids:
-        ids = args.compare_ids.split(",")
-        compare_articles(abstracts, ids)
+        output = run_comparison_from_ids(args.compare_ids)
+        print(output)

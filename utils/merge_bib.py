@@ -324,7 +324,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main():
+def merge_main():
     """
     Función principal: ejecuta el flujo completo de lectura, merge y escritura.
     """
@@ -363,4 +363,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    merge_main()
