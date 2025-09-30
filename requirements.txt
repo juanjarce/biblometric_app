@@ -10,3 +10,13 @@ scipy
 nltk
 scikit-learn
 pandas
+wordcloud
+reportlab
+pycountry
+seaborn
+numpy
+nltk
+Pillow
+plotly
+kaleido
+streamlit
