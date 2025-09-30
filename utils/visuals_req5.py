@@ -19,6 +19,9 @@ import argparse
 import re
 from pathlib import Path
 from collections import Counter, defaultdict
+import geopandas as gpd
+from pathlib import Path
+import pandas as pd
 
 import pandas as pd
 import numpy as np
@@ -195,19 +198,21 @@ def to_dataframe(entries: list[dict]) -> pd.DataFrame:
     df = df[(df['year'] >= 1990) & (df['year'] <= 2030)]
     return df
 
-
 def build_geo_heatmap(df: pd.DataFrame, out_png: Path) -> None:
-    """Genera un choropleth mejorado con mejor diseño."""
+    """Genera un mapa de calor geográfico con matplotlib (por país)."""
     counts = df["first_author_country"].value_counts().reset_index()
     counts.columns = ["iso_alpha", "count"]
     counts = counts[counts["iso_alpha"] != "UNK"]
-    
+
     if counts.empty:
-        # Imagen de fallback mejorada
+        # Imagen fallback
         fig, ax = plt.subplots(figsize=(12, 8))
-        ax.text(0.5, 0.5, 'Distribución geográfica\n(sin datos de país disponibles)', 
-                ha='center', va='center', fontsize=16, 
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray"))
+        ax.text(
+            0.5, 0.5,
+            'Distribución geográfica\n(sin datos de país disponibles)',
+            ha='center', va='center', fontsize=16,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray")
+        )
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis('off')
@@ -216,30 +221,35 @@ def build_geo_heatmap(df: pd.DataFrame, out_png: Path) -> None:
         plt.close()
         return
 
-    # Crear mapa con Plotly mejorado
-    fig = px.choropleth(
-        counts,
-        locations="iso_alpha",
-        color="count",
-        color_continuous_scale="Plasma",
-        projection="natural earth",
-        title="<b>Distribución Geográfica de Publicaciones</b><br><sub>Por país del primer autor</sub>",
-        labels={"count": "Núm. Publicaciones", "iso_alpha": "País"}
+    # --- Cargar shapefile descargado ---
+    world = gpd.read_file("data/shapefiles/ne_110m_admin_0_countries.shp")
+
+    # Unir por código ISO A3
+    world_counts = world.merge(counts, left_on="ISO_A3", right_on="iso_alpha", how="left")
+    world_counts["count"] = world_counts["count"].fillna(0)
+
+    # --- Graficar ---
+    fig, ax = plt.subplots(figsize=(14, 8))
+    world_counts.plot(
+        column="count",
+        cmap="plasma",
+        linewidth=0.5,
+        ax=ax,
+        edgecolor="0.6",
+        legend=True,
+        legend_kwds={"label": "Número de Publicaciones"}
     )
-    
-    fig.update_layout(
-        font=dict(family="Arial, sans-serif", size=12),
-        title_font_size=16,
-        width=1200,
-        height=700,
-        geo=dict(
-            showframe=False,
-            showcoastlines=True,
-            projection_type='natural earth'
-        )
+
+    ax.set_title(
+        "Distribución Geográfica de Publicaciones\n(País del primer autor)",
+        fontsize=16,
+        fontweight="bold"
     )
-    
-    fig.write_image(str(out_png), width=1200, height=700, scale=2)
+    ax.axis("off")
+
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close()
 
 
 def build_wordcloud(df: pd.DataFrame, out_png: Path) -> None:
@@ -283,125 +293,62 @@ def build_wordcloud(df: pd.DataFrame, out_png: Path) -> None:
     plt.savefig(out_png, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
 
-
 def build_timeline(df: pd.DataFrame, out_png: Path) -> None:
-    """Genera timeline mejorado con múltiples visualizaciones."""
+    """Genera timeline con múltiples visualizaciones usando matplotlib."""
     # Preparar datos
     df_valid = df.dropna(subset=['year'])
-    
+
     # Timeline general
     yearly_counts = df_valid.groupby('year').size().reset_index(name='count')
-    
+
     # Top venues para el área apilada
     top_venues = df_valid['venue'].value_counts().head(5).index.tolist()
     df_top_venues = df_valid[df_valid['venue'].isin(top_venues)]
-    venue_yearly = df_top_venues.groupby(['year', 'venue']).size().reset_index(name='count')
-    
-    # Crear subplots con Plotly
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=(
-            "Evolución Temporal Total",
-            "Distribución por Tipo de Publicación", 
-            "Top 5 Venues - Evolución",
-            "Tendencia con Regresión"
-        ),
-        specs=[[{"secondary_y": False}, {"type": "pie"}],
-               [{"colspan": 1}, {"secondary_y": False}]]
-    )
-    
-    # 1. Línea temporal principal con área
-    fig.add_trace(
-        go.Scatter(
-            x=yearly_counts['year'],
-            y=yearly_counts['count'],
-            mode='lines+markers',
-            name='Total Publicaciones',
-            line=dict(color='#2E86AB', width=3),
-            marker=dict(size=8),
-            fill='tonexty',
-            fillcolor='rgba(46, 134, 171, 0.2)'
-        ),
-        row=1, col=1
-    )
-    
-    # 2. Gráfico de pie por tipo de publicación
+    venue_yearly = df_top_venues.groupby(['year', 'venue']).size().unstack(fill_value=0)
+
+    # 2x2 subplots
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle("Análisis Temporal de la Producción Científica", fontsize=16, fontweight="bold")
+
+    # --- 1. Línea temporal principal con área ---
+    axes[0, 0].fill_between(yearly_counts['year'], yearly_counts['count'], 
+                            color='skyblue', alpha=0.4)
+    axes[0, 0].plot(yearly_counts['year'], yearly_counts['count'], 
+                    marker='o', color='blue', label="Total Publicaciones")
+    axes[0, 0].set_title("Evolución Temporal Total")
+    axes[0, 0].set_xlabel("Año")
+    axes[0, 0].set_ylabel("Número de Publicaciones")
+    axes[0, 0].legend()
+
+    # --- 2. Pie chart por tipo de publicación ---
     pub_type_counts = df_valid['pub_type'].value_counts()
-    fig.add_trace(
-        go.Pie(
-            labels=pub_type_counts.index,
-            values=pub_type_counts.values,
-            name="Tipo Publicación",
-            marker_colors=px.colors.qualitative.Set3
-        ),
-        row=1, col=2
-    )
-    
-    # 3. Área apilada para top venues
-    colors = px.colors.qualitative.Plotly
-    for i, venue in enumerate(top_venues):
-        venue_data = venue_yearly[venue_yearly['venue'] == venue]
-        fig.add_trace(
-            go.Scatter(
-                x=venue_data['year'],
-                y=venue_data['count'],
-                mode='lines',
-                name=venue[:30] + "..." if len(venue) > 30 else venue,
-                stackgroup='one',
-                line=dict(color=colors[i % len(colors)])
-            ),
-            row=2, col=1
-        )
-    
-    # 4. Tendencia con regresión
+    axes[0, 1].pie(pub_type_counts.values, labels=pub_type_counts.index, 
+                   autopct='%1.1f%%', startangle=140)
+    axes[0, 1].set_title("Distribución por Tipo de Publicación")
+
+    # --- 3. Área apilada para top venues ---
+    venue_yearly.plot.area(ax=axes[1, 0], cmap="tab20")
+    axes[1, 0].set_title("Top 5 Venues - Evolución")
+    axes[1, 0].set_xlabel("Año")
+    axes[1, 0].set_ylabel("Publicaciones (Acumulado)")
+    axes[1, 0].legend(title="Venue")
+
+    # --- 4. Tendencia con regresión ---
     if len(yearly_counts) > 1:
         z = np.polyfit(yearly_counts['year'], yearly_counts['count'], 1)
         p = np.poly1d(z)
-        
-        fig.add_trace(
-            go.Scatter(
-                x=yearly_counts['year'],
-                y=yearly_counts['count'],
-                mode='markers',
-                name='Datos Reales',
-                marker=dict(color='#A23B72', size=10)
-            ),
-            row=2, col=2
-        )
-        
-        fig.add_trace(
-            go.Scatter(
-                x=yearly_counts['year'],
-                y=p(yearly_counts['year']),
-                mode='lines',
-                name='Tendencia Linear',
-                line=dict(color='#F18F01', width=3, dash='dash')
-            ),
-            row=2, col=2
-        )
-    
-    # Actualizar layout
-    fig.update_layout(
-        height=800,
-        width=1400,
-        title_text="<b>Análisis Temporal de la Producción Científica</b>",
-        title_x=0.5,
-        title_font_size=18,
-        font=dict(family="Arial, sans-serif", size=10),
-        showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5)
-    )
-    
-    # Actualizar ejes
-    fig.update_xaxes(title_text="Año", row=1, col=1)
-    fig.update_yaxes(title_text="Número de Publicaciones", row=1, col=1)
-    fig.update_xaxes(title_text="Año", row=2, col=1)
-    fig.update_yaxes(title_text="Publicaciones (Acumulado)", row=2, col=1)
-    fig.update_xaxes(title_text="Año", row=2, col=2)
-    fig.update_yaxes(title_text="Número de Publicaciones", row=2, col=2)
-    
-    fig.write_image(str(out_png), width=1400, height=800, scale=2)
+        axes[1, 1].scatter(yearly_counts['year'], yearly_counts['count'], 
+                           color="purple", label="Datos Reales")
+        axes[1, 1].plot(yearly_counts['year'], p(yearly_counts['year']), 
+                        "r--", label=f"Tendencia (y={z[0]:.2f}x+{z[1]:.2f})")
+        axes[1, 1].set_title("Tendencia con Regresión")
+        axes[1, 1].set_xlabel("Año")
+        axes[1, 1].set_ylabel("Número de Publicaciones")
+        axes[1, 1].legend()
 
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close()
 
 def create_summary_stats(df: pd.DataFrame) -> dict:
     """Crea estadísticas resumidas para el reporte."""
