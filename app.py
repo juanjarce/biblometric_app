@@ -1,7 +1,5 @@
 import os
 import streamlit as st
-from scraper.acm_scraper3 import scrape_acm_bibtex
-from scraper.ieee_scraper import scrape_ieee_bibtex
 from utils.merge_bib import merge_main
 from utils.keywords_analizer import main_keywords_analizer
 from utils.clustering.run_all import main_dendrograms_analizer
@@ -13,6 +11,8 @@ st.title("Menú Proyecto")
 
 # --- Scraper ACM ---
 st.subheader("Scraper ACM")
+from scraper.acm_scraper3 import scrape_acm_bibtex
+
 start_acm = st.number_input("Página inicio (ACM)", min_value=0, step=1, key="acm_start")
 count_acm = st.number_input("Cantidad páginas (ACM)", min_value=1, step=1, key="acm_count")
 if st.button("Ejecutar Scraper ACM"):
@@ -23,6 +23,8 @@ if st.button("Ejecutar Scraper ACM"):
 
 # --- Scraper IEEE ---
 st.subheader("Scraper IEEE")
+from scraper.ieee_scraper import scrape_ieee_bibtex
+
 start_ieee = st.number_input("Página inicio (IEEE)", min_value=1, step=1, key="ieee_start")
 count_ieee = st.number_input("Cantidad páginas (IEEE)", min_value=1, step=1, key="ieee_count")
 if st.button("Ejecutar Scraper IEEE"):

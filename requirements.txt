@@ -17,7 +17,6 @@ seaborn
 numpy
 nltk
 Pillow
-plotly
 kaleido
 streamlit
 geopandas

@@ -11,7 +11,7 @@ Mejoras implementadas:
 4) PDF con mejor layout y diseño profesional
 
 Dependencias:
-    pandas, bibtexparser, plotly, kaleido, wordcloud, reportlab, pycountry, matplotlib, seaborn, nltk
+    pandas, bibtexparser, kaleido, wordcloud, reportlab, pycountry, matplotlib, seaborn, nltk
 """
 from __future__ import annotations
 
@@ -29,9 +29,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Librerías para visualización y exportación
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from wordcloud import WordCloud
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.pdfgen import canvas
