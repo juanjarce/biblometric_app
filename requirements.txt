@@ -18,5 +18,5 @@ numpy
 nltk
 Pillow
 kaleido
-streamlit
+streamlit>=1.38.0
 geopandas
