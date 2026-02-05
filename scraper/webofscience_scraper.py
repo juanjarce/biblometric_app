@@ -158,16 +158,19 @@ def scrape_wos(page: int):
             .send_keys(Keys.TAB).pause(0.5) \
             .send_keys(Keys.ENTER).pause(0.5) \
             .send_keys(Keys.ARROW_DOWN).pause(0.4) \
+            .send_keys(Keys.ARROW_DOWN).pause(0.4) \
+            .send_keys(Keys.ARROW_DOWN).pause(0.4) \
             .perform()
         
         time.sleep(1)
-        print("Seleccionando 'Author, Title, Source, Abstract'...")
+        print("Seleccionando 'Full Record and Cited References'...")
         option = wait.until(
             EC.presence_of_element_located((
                 By.XPATH,
-                "//div[@role='menuitem' and @aria-label='Author, Title, Source, Abstract']"
+                "//div[@role='menuitem' and @aria-label='Full Record and Cited References']"
             ))
         )
+
         driver.execute_script("""
         const el = arguments[0];
 
