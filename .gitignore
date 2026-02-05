@@ -45,3 +45,6 @@ Desktop.ini
 build/
 dist/
 *.egg-info/
+
+# Aditional info
+data/utils
