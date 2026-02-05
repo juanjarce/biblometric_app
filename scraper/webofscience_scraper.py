@@ -90,7 +90,7 @@ def scrape_wos(page: int):
             ))
         )
         next_button.click()
-        time.sleep(50) # Esperar a que cargue la pagina
+        time.sleep(35) # Esperar a que cargue la pagina
 
         # Aceptar las cookies
         # Click en "Manage cookie preferences"
