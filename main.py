@@ -1,19 +1,19 @@
 import subprocess
 import time
 import subprocess
-from scraper.acm_scraper3 import scrape_acm_bibtex
+from scraper.webofscience_scraper import scrape_wos
 from scraper.ieee_scraper import scrape_ieee_bibtex
 from utils.keywords_analizer import main_keywords_analizer
 from utils.clustering.run_all import main_dendrograms_analizer
 from utils.visuals_req5 import main_visuals_req5
 
-def run_acm_scraper():
+def run_webofscience_scraper():
     try:
-        start = int(input("Página de inicio (ej: 0): "))
+        start = int(input("Página de inicio (ej: 1): "))
         count = int(input("¿Cuántas páginas desea scrapear?: "))
         for i in range(start, start + count):
             print(f"\n>>> Scraping page {i}")
-            scrape_acm_bibtex(i)
+            scrape_wos(i)
             time.sleep(3)  # evita sobrecargar el servidor
     except ValueError:
         print("Entrada inválida, por favor ingrese números.")
@@ -34,13 +34,13 @@ def run_ieee_scraper():
 def run_merge_bib():
     print("\n=== MERGE BIB ===")
     ieee_dir = "data/raw/IEEE"
-    acm_dirs = "data/raw/ACM3"
+    wos_dirs = "data/raw/WoS"
     out_dir = "data/processed"
 
     subprocess.run([
         "python3", "utils/merge_bib.py",
         "--ieee-dir", ieee_dir,
-        "--acm-dirs", acm_dirs,
+        "--wos-dirs", wos_dirs,
         "--out-dir", out_dir
     ])
 
@@ -63,7 +63,7 @@ def run_visuals_req5():
 def menu():
     while True:
         print("\n===== MENÚ PRINCIPAL =====")
-        print("1. Scraper ACM")
+        print("1. Scraper Web of Science")
         print("2. Scraper IEEE")
         print("3. Merge Bib")
         print("4. Comparar artículos")
@@ -75,7 +75,7 @@ def menu():
         opcion = input("Selecciona una opción: ")
 
         if opcion == "1":
-            run_acm_scraper()
+            run_webofscience_scraper()
         elif opcion == "2":
             run_ieee_scraper()
         elif opcion == "3":

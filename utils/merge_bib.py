@@ -2,14 +2,14 @@
 """
 scraper/merge_bib.py
 
-Script para fusionar entradas bibliográficas de IEEE y con las de ACM.
+Script para fusionar entradas bibliográficas de IEEE y Web of Science (WOS).
 - Salidas:
     * .bib fusionado
     * Reporte CSV con el mapeo (tipo de match, score, archivos fuente)
 Uso:
 python3 utils/merge_bib.py \
         --ieee-dir data/raw/IEEE \
-        --acm-dirs data/raw/ACM3 \
+        --wos-dirs data/raw/WoS \
         --out-dir data/processed
 """
 
@@ -23,9 +23,9 @@ from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 
 import bibtexparser
-from bibtexparser.bibdatabase import BibDatabase  # Manejo de base de datos BibTeX
-from bibtexparser.bwriter import BibTexWriter    # Escritura de archivos BibTeX
-from rapidfuzz import process, fuzz              # Fuzzy matching para títulos
+from bibtexparser.bibdatabase import BibDatabase
+from bibtexparser.bwriter import BibTexWriter
+from rapidfuzz import process, fuzz
 
 # ---- Configuración de logging ----
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -34,17 +34,12 @@ logger = logging.getLogger("merge_bib")
 
 # ---- Utilidades ----
 def project_root() -> Path:
-    """
-    Retorna la raíz del proyecto asumiendo que este archivo está en <project>/utils/.
-    """
+    """Retorna la raíz del proyecto asumiendo que este archivo está en <project>/utils/."""
     return Path(__file__).resolve().parent.parent
 
 
 def read_bib_files(folder: Path) -> List[Dict]:
-    """
-    Lee todos los archivos .bib en una carpeta y retorna una lista de entradas.
-    Agrega el nombre del archivo fuente a cada entrada.
-    """
+    """Lee todos los archivos .bib en una carpeta y retorna una lista de entradas."""
     entries: List[Dict] = []
     if not folder.exists():
         logger.warning("Carpeta no existe: %s", folder)
@@ -54,7 +49,7 @@ def read_bib_files(folder: Path) -> List[Dict]:
             text = p.read_text(encoding="utf-8", errors="ignore")
             db = bibtexparser.loads(text)
             for e in db.entries:
-                e.setdefault("_source_file", str(p.name))  # Guarda el archivo fuente
+                e.setdefault("_source_file", str(p.name))
                 entries.append(e)
         except Exception as ex:
             logger.error("Error leyendo %s: %s", p, ex)
@@ -63,9 +58,6 @@ def read_bib_files(folder: Path) -> List[Dict]:
 
 
 def normalize_isbn(isbn_raw: Optional[str]) -> Optional[List[str]]:
-    """
-    Normaliza el campo ISBN/ISSN eliminando caracteres especiales y separando múltiples ISBNs.
-    """
     if not isbn_raw:
         return None
     s = re.sub(r'[{}\s"]', "", isbn_raw)
@@ -75,10 +67,6 @@ def normalize_isbn(isbn_raw: Optional[str]) -> Optional[List[str]]:
 
 
 def normalize_title(title: Optional[str]) -> str:
-    """
-    Normaliza el título para comparación difusa:
-    - Minúsculas, elimina acentos, caracteres especiales y espacios extra.
-    """
     if not title:
         return ""
     t = title.lower()
@@ -90,9 +78,6 @@ def normalize_title(title: Optional[str]) -> str:
 
 
 def get_isbns_from_entry(e: Dict) -> Optional[List[str]]:
-    """
-    Extrae y normaliza el ISBN/ISSN de una entrada.
-    """
     for key in ("isbn", "ISBN", "issn", "ISSN"):
         if key in e and str(e[key]).strip():
             return normalize_isbn(str(e[key]))
@@ -100,18 +85,11 @@ def get_isbns_from_entry(e: Dict) -> Optional[List[str]]:
 
 
 def merge_entries(e_list: List[Dict]) -> Dict:
-    """
-    Fusiona una lista de entradas bib en una sola.
-    Estrategia:
-      - ENTRYTYPE del primer elemento (por defecto 'inproceedings')
-      - keywords: une tokens únicos
-      - abstract: el más largo
-      - otros campos: el valor más largo no vacío
-    """
     merged: Dict = {}
     merged["ENTRYTYPE"] = e_list[0].get("ENTRYTYPE", e_list[0].get("type", "inproceedings"))
     fields = set().union(*[set(e.keys()) for e in e_list])
     fields = [f for f in fields if not f.startswith("_")]
+
     for f in fields:
         vals = [str(e.get(f, "")).strip() for e in e_list if str(e.get(f, "")).strip()]
         if not vals:
@@ -133,9 +111,6 @@ def merge_entries(e_list: List[Dict]) -> Dict:
 
 # ---- Lógica principal de merge ----
 def build_isbn_map(entries: List[Dict]) -> Dict[str, List[Tuple[int, Dict]]]:
-    """
-    Construye un mapa ISBN -> lista de (índice, entrada) para búsqueda rápida.
-    """
     m: Dict[str, List[Tuple[int, Dict]]] = {}
     for idx, e in enumerate(entries):
         isbns = get_isbns_from_entry(e)
@@ -147,218 +122,170 @@ def build_isbn_map(entries: List[Dict]) -> Dict[str, List[Tuple[int, Dict]]]:
 
 def merge_collections(
     ieee_entries: List[Dict],
-    acm_entries: List[Dict],
+    wos_entries: List[Dict],
     title_threshold: int = 88,
 ) -> Tuple[List[Dict], List[Dict]]:
-    """
-    Fusiona colecciones IEEE y ACM:
-    1) Empareja por ISBN exacto
-    2) Empareja por título difuso (fuzzy)
-    3) Agrega entradas no emparejadas
-    Retorna: lista de entradas fusionadas y mapeo para reporte CSV.
-    """
-    used_acm = set()
+
+    used_wos = set()
     used_ieee = set()
     merged_results: List[Dict] = []
     mapping_rows: List[Dict] = []
 
-    acm_isbn_map = build_isbn_map(acm_entries)
-    # 1) Emparejamiento por ISBN
+    wos_isbn_map = build_isbn_map(wos_entries)
+
+    # 1) Match por ISBN
     for i_idx, e_ieee in enumerate(ieee_entries):
         isbns = get_isbns_from_entry(e_ieee)
-        matched = False
-        if isbns:
-            for isb in isbns:
-                if isb in acm_isbn_map:
-                    acm_hits = acm_isbn_map[isb]
-                    for a_idx, a_entry in acm_hits:
-                        if a_idx in used_acm:
-                            continue
-                        merged = merge_entries([e_ieee, a_entry])
-                        merged_results.append(merged)
-                        used_acm.add(a_idx)
-                        used_ieee.add(i_idx)
-                        mapping_rows.append(
-                            {
-                                "merged_key": "",
-                                "ieee_key": e_ieee.get("ID", ""),
-                                "acm_key": a_entry.get("ID", ""),
-                                "match_type": "ISBN",
-                                "score": 100,
-                                "isbn": isb,
-                                "ieee_file": e_ieee.get("_source_file", ""),
-                                "acm_file": a_entry.get("_source_file", ""),
-                            }
-                        )
-                        matched = True
-                    if matched:
-                        break
-
-    # Preparar pools restantes para comparación difusa de títulos
-    remaining_ieee = [(i, e) for i, e in enumerate(ieee_entries) if i not in used_ieee]
-    remaining_acm = [(i, e) for i, e in enumerate(acm_entries) if i not in used_acm]
-
-    acm_pool_idx: List[int] = []
-    acm_pool_titles: List[str] = []
-    for idx, e in remaining_acm:
-        acm_pool_idx.append(idx)
-        acm_pool_titles.append(normalize_title(e.get("title", "")))
-
-    # 2) Emparejamiento difuso por título
-    for i_idx, e_ieee in remaining_ieee:
-        title_ieee = normalize_title(e_ieee.get("title", ""))
-        if not title_ieee or not acm_pool_titles:
+        if not isbns:
             continue
-        best = process.extractOne(title_ieee, acm_pool_titles, scorer=fuzz.token_set_ratio)
-        if best:
-            candidate_title, score, pos = best
-            if score >= title_threshold:
-                acm_real_idx = acm_pool_idx[pos]
-                e_acm = acm_entries[acm_real_idx]
-                merged = merge_entries([e_ieee, e_acm])
-                merged_results.append(merged)
-                used_acm.add(acm_real_idx)
-                used_ieee.add(i_idx)
-                mapping_rows.append(
-                    {
+        for isb in isbns:
+            if isb in wos_isbn_map:
+                for w_idx, e_wos in wos_isbn_map[isb]:
+                    if w_idx in used_wos:
+                        continue
+                    merged_results.append(merge_entries([e_ieee, e_wos]))
+                    used_ieee.add(i_idx)
+                    used_wos.add(w_idx)
+                    mapping_rows.append({
                         "merged_key": "",
                         "ieee_key": e_ieee.get("ID", ""),
-                        "acm_key": e_acm.get("ID", ""),
-                        "match_type": "TITLE",
-                        "score": int(score),
-                        "isbn": ";".join(get_isbns_from_entry(e_ieee) or []) or ";".join(get_isbns_from_entry(e_acm) or []),
+                        "wos_key": e_wos.get("ID", ""),
+                        "match_type": "ISBN",
+                        "score": 100,
+                        "isbn": isb,
                         "ieee_file": e_ieee.get("_source_file", ""),
-                        "acm_file": e_acm.get("_source_file", ""),
-                    }
-                )
-                # Elimina el emparejado del pool
-                del acm_pool_titles[pos]
-                del acm_pool_idx[pos]
+                        "wos_file": e_wos.get("_source_file", ""),
+                    })
+                break
 
-    # 3) Agrega entradas no emparejadas
-    for i_idx, e_ieee in enumerate(ieee_entries):
-        if i_idx not in used_ieee:
-            merged_results.append(merge_entries([e_ieee]))
-            mapping_rows.append(
-                {
+    remaining_ieee = [(i, e) for i, e in enumerate(ieee_entries) if i not in used_ieee]
+    remaining_wos = [(i, e) for i, e in enumerate(wos_entries) if i not in used_wos]
+
+    wos_pool_idx = [i for i, _ in remaining_wos]
+    wos_pool_titles = [normalize_title(e.get("title", "")) for _, e in remaining_wos]
+
+    # 2) Match por título difuso
+    for i_idx, e_ieee in remaining_ieee:
+        title_ieee = normalize_title(e_ieee.get("title", ""))
+        if not title_ieee or not wos_pool_titles:
+            continue
+        best = process.extractOne(title_ieee, wos_pool_titles, scorer=fuzz.token_set_ratio)
+        if best:
+            _, score, pos = best
+            if score >= title_threshold:
+                w_idx = wos_pool_idx[pos]
+                e_wos = wos_entries[w_idx]
+                merged_results.append(merge_entries([e_ieee, e_wos]))
+                used_ieee.add(i_idx)
+                used_wos.add(w_idx)
+                mapping_rows.append({
                     "merged_key": "",
                     "ieee_key": e_ieee.get("ID", ""),
-                    "acm_key": "",
-                    "match_type": "UNMATCHED_IEEE",
-                    "score": 0,
-                    "isbn": ";".join(get_isbns_from_entry(e_ieee) or []),
+                    "wos_key": e_wos.get("ID", ""),
+                    "match_type": "TITLE",
+                    "score": int(score),
+                    "isbn": ";".join(get_isbns_from_entry(e_ieee) or []) or ";".join(get_isbns_from_entry(e_wos) or []),
                     "ieee_file": e_ieee.get("_source_file", ""),
-                    "acm_file": "",
-                }
-            )
-    for a_idx, e_acm in enumerate(acm_entries):
-        if a_idx not in used_acm:
-            merged_results.append(merge_entries([e_acm]))
-            mapping_rows.append(
-                {
-                    "merged_key": "",
-                    "ieee_key": "",
-                    "acm_key": e_acm.get("ID", ""),
-                    "match_type": "UNMATCHED_ACM",
-                    "score": 0,
-                    "isbn": ";".join(get_isbns_from_entry(e_acm) or []),
-                    "ieee_file": "",
-                    "acm_file": e_acm.get("_source_file", ""),
-                }
-            )
+                    "wos_file": e_wos.get("_source_file", ""),
+                })
+                del wos_pool_titles[pos]
+                del wos_pool_idx[pos]
+
+    # 3) No emparejados
+    for i, e in enumerate(ieee_entries):
+        if i not in used_ieee:
+            merged_results.append(merge_entries([e]))
+            mapping_rows.append({
+                "merged_key": "",
+                "ieee_key": e.get("ID", ""),
+                "wos_key": "",
+                "match_type": "UNMATCHED_IEEE",
+                "score": 0,
+                "isbn": ";".join(get_isbns_from_entry(e) or []),
+                "ieee_file": e.get("_source_file", ""),
+                "wos_file": "",
+            })
+
+    for i, e in enumerate(wos_entries):
+        if i not in used_wos:
+            merged_results.append(merge_entries([e]))
+            mapping_rows.append({
+                "merged_key": "",
+                "ieee_key": "",
+                "wos_key": e.get("ID", ""),
+                "match_type": "UNMATCHED_WOS",
+                "score": 0,
+                "isbn": ";".join(get_isbns_from_entry(e) or []),
+                "ieee_file": "",
+                "wos_file": e.get("_source_file", ""),
+            })
 
     return merged_results, mapping_rows
 
 
-# ---- Escritura de archivos ----
+# ---- Escritura ----
 def write_bib_and_csv(out_dir: Path, merged_results: List[Dict], mapping_rows: List[Dict], out_bib: str, out_csv: str) -> None:
-    """
-    Escribe el archivo .bib fusionado y el reporte CSV de mapeo.
-    """
     out_dir.mkdir(parents=True, exist_ok=True)
-    # Asigna IDs únicos a cada entrada fusionada
-    out_entries = []
+
     for idx, e in enumerate(merged_results, start=1):
-        key_base = f"merged{idx}"
-        sanitized = re.sub(r"\s+", "_", key_base)
-        e["ID"] = sanitized
-        out_entries.append(e)
+        e["ID"] = f"merged{idx}"
 
     bibdb = BibDatabase()
-    bibdb.entries = out_entries
+    bibdb.entries = merged_results
     writer = BibTexWriter()
-    writer.indent = "  "
     writer.order_entries_by = None
-    out_bib_path = out_dir / out_bib
-    out_bib_path.write_text(writer.write(bibdb), encoding="utf-8")
-    logger.info("Bib guardado en: %s", out_bib_path)
 
-    out_csv_path = out_dir / out_csv
-    with out_csv_path.open("w", newline="", encoding="utf-8") as f:
-        fieldnames = ["merged_key", "ieee_key", "acm_key", "match_type", "score", "isbn", "ieee_file", "acm_file"]
+    (out_dir / out_bib).write_text(writer.write(bibdb), encoding="utf-8")
+
+    with (out_dir / out_csv).open("w", newline="", encoding="utf-8") as f:
+        fieldnames = ["merged_key", "ieee_key", "wos_key", "match_type", "score", "isbn", "ieee_file", "wos_file"]
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for r in mapping_rows:
             w.writerow(r)
-    logger.info("CSV de mapeo guardado en: %s", out_csv_path)
-    logger.info("Total entradas resultantes: %d", len(out_entries))
 
 
 # ---- CLI ----
 def parse_args() -> argparse.Namespace:
-    """
-    Parsea los argumentos de línea de comandos.
-    """
     pr = project_root()
-    parser = argparse.ArgumentParser(description="Merge IEEE and ACM .bib files by ISBN then title")
-    parser.add_argument("--ieee-dir", default=str(pr / "data" / "raw" / "IEEE"), help="Carpeta con archivos .bib IEEE")
-    parser.add_argument(
-        "--acm-dirs",
-        default=str(pr / "data" / "raw" / "ACM3"),
-        help="Carpeta(s) con archivos .bib ACM, separadas por comas (ej: data/raw/ACM,data/raw/ACM2)",
-    )
-    parser.add_argument("--out-dir", default=str(pr / "data" / "processed"), help="Carpeta de salida")
-    parser.add_argument("--out-bib", default="merged.bib", help="Nombre del .bib de salida")
-    parser.add_argument("--out-csv", default="merge_map.csv", help="CSV con el mapa de merges")
-    parser.add_argument("--title-threshold", type=int, default=88, help="Umbral (0-100) para fuzzy title match")
+    parser = argparse.ArgumentParser(description="Merge IEEE and Web of Science .bib files")
+    parser.add_argument("--ieee-dir", default=str(pr / "data/raw/IEEE"))
+    parser.add_argument("--wos-dirs", default=str(pr / "data/raw/WoS"))
+    parser.add_argument("--out-dir", default=str(pr / "data/processed"))
+    parser.add_argument("--out-bib", default="merged.bib")
+    parser.add_argument("--out-csv", default="merge_map.csv")
+    parser.add_argument("--title-threshold", type=int, default=88)
     return parser.parse_args()
 
 
 def merge_main():
-    """
-    Función principal: ejecuta el flujo completo de lectura, merge y escritura.
-    """
     args = parse_args()
-
-    # Resuelve rutas relativas a la raíz del proyecto si es necesario
     pr = project_root()
+
     ieee_dir = Path(args.ieee_dir)
     if not ieee_dir.is_absolute():
-        ieee_dir = (pr / args.ieee_dir).resolve()
-    acm_dirs_raw = args.acm_dirs.split(",")
-    acm_dirs: List[Path] = []
-    for ad in acm_dirs_raw:
-        p = Path(ad.strip())
+        ieee_dir = (pr / ieee_dir).resolve()
+
+    wos_dirs = []
+    for d in args.wos_dirs.split(","):
+        p = Path(d.strip())
         if not p.is_absolute():
-            p = (pr / ad.strip()).resolve()
-        acm_dirs.append(p)
+            p = (pr / p).resolve()
+        wos_dirs.append(p)
 
     out_dir = Path(args.out_dir)
     if not out_dir.is_absolute():
-        out_dir = (pr / args.out_dir).resolve()
+        out_dir = (pr / out_dir).resolve()
 
-    logger.info("IEEE dir: %s", ieee_dir)
-    logger.info("ACM dirs: %s", ", ".join(str(p) for p in acm_dirs))
-    logger.info("Out dir: %s", out_dir)
-
-    # Lee entradas de archivos .bib
     ieee_entries = read_bib_files(ieee_dir)
-    acm_entries_all: List[Dict] = []
-    for acm_dir in acm_dirs:
-        acm_entries_all.extend(read_bib_files(acm_dir))
+    wos_entries = []
+    for d in wos_dirs:
+        wos_entries.extend(read_bib_files(d))
 
-    # Fusiona colecciones y escribe resultados
-    merged_results, mapping_rows = merge_collections(ieee_entries, acm_entries_all, title_threshold=args.title_threshold)
+    merged_results, mapping_rows = merge_collections(
+        ieee_entries, wos_entries, title_threshold=args.title_threshold
+    )
+
     write_bib_and_csv(out_dir, merged_results, mapping_rows, args.out_bib, args.out_csv)
 
 

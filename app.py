@@ -9,17 +9,17 @@ import subprocess, time
 
 st.title("Menú Proyecto")
 
-# --- Scraper ACM ---
-st.subheader("Scraper ACM")
-from scraper.acm_scraper3 import scrape_acm_bibtex
+# --- Scraper Web of Science ---
+st.subheader("Scraper Web of Science")
+from scraper.webofscience_scraper import scrape_wos
 
-start_acm = st.number_input("Página inicio (ACM)", min_value=0, step=1, key="acm_start")
-count_acm = st.number_input("Cantidad páginas (ACM)", min_value=1, step=1, key="acm_count")
-if st.button("Ejecutar Scraper ACM"):
-    for i in range(start_acm, start_acm + count_acm):
-        scrape_acm_bibtex(i)
+webofscience_start = st.number_input("Página inicio (Web of Science)", min_value=0, step=1, key="webofscience_start")
+webofscience_count = st.number_input("Cantidad páginas (Web of Science)", min_value=1, step=1, key="webofscience_count")
+if st.button("Ejecutar Scraper Web of Science"):
+    for i in range(webofscience_start, webofscience_start + webofscience_count):
+        scrape_wos(i)
         time.sleep(3)
-    st.success("Scraper ACM completado ✅")
+    st.success("Scraper Web of Science completado ✅")
 
 # --- Scraper IEEE ---
 st.subheader("Scraper IEEE")
