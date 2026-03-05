@@ -101,6 +101,7 @@ def extract_top_terms(abstracts, top_n=15):
         (r"\bllm(s)?\b", "large language models"),
         (r"\bchat\s?gpt\b", "chatgpt"),
         (r"\bchat-gpt\b", "chatgpt"),
+        (r"\bmodels?\b", "models"),
 
         # ---- Higher Education ----
         (r"\bhigher education\b", "higher education"),
