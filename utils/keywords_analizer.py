@@ -13,10 +13,9 @@ para las cuales se van a calcular la frecuencia de aparición en los abstracts d
 en 'meged.bib'
 """
 keywords = [
-    "generative models", "prompting", "machine learning", "multimodality",
-    "fine-tuning", "training data", "algorithmic bias", "explainability",
-    "transparency", "ethics", "privacy", "personalization",
-    "human-ai interaction", "ai literacy", "co-creation"
+    "higher education", "generative ai", "large language models", "chatgpt", "teaching and learning",
+    "assessment", "feedback", "academic integrity", "plagiarism", "ethics",
+    "student perceptions", "faculty perceptions", "ai literacy", "curriculum design", "policy"
 ]
 
 """"
@@ -50,24 +49,155 @@ def count_keyword_frequencies(abstracts, keywords):
 Función para obtener los 15 términos pricnipales dentro de los abstracts 
 """
 def extract_top_terms(abstracts, top_n=15):
-    # Convierte los abstracts (que vienen en un diccionario {id: texto}) en una lista de solo textos
     texts = list(abstracts.values())
 
-    # Crea un vectorizador TF-IDF (Term Frequency – Inverse Document Frequency)
-    #    - stop_words="english": ignora palabras muy comunes en inglés (the, and, of, etc.)
-    #    - ngram_range=(1,3): considera unigramas (1 palabra), bigramas (2 palabras) y trigramas (3 palabras)
-    vec = TfidfVectorizer(stop_words="english", ngram_range=(1,3))
+    # --- Stopwords extendidas para abstracts académicos ---
+    extra_stopwords = {
+        "use", "used", "using", "based", "show", "shows", "shown", "may", "can", "could", "would",
+        "also", "however", "therefore", "thus", "within", "across", "among", "via",
+        "paper", "study", "research", "results", "result", "method", "methods", "approach", "propose",
+        "proposed", "analysis", "analyses", "data", "dataset", "datasets",
+        "framework", "system", "systems", "tool", "tools", "evaluation", "evaluated",
+        "findings", "conclusion", "conclusions", "discussion", "literature", "review",
+        "experiment", "experiments", "experimental"
+    }
 
-    tfidf = vec.fit_transform(texts) # Transforma los textos en una matriz TF-IDF
+    vec = TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1,3),
+        lowercase=True,
+        token_pattern=r"(?u)\b[a-zA-Z][a-zA-Z\-]{2,}\b"
+    )
 
-    scores = np.asarray(tfidf.sum(axis=0)).ravel()  # Calcula la suma de los pesos TF-IDF de cada término en todos los documentos
+    tfidf = vec.fit_transform(texts)
+    scores = np.asarray(tfidf.sum(axis=0)).ravel()
+    terms = vec.get_feature_names_out()
 
-    terms = vec.get_feature_names_out() # Obtiene la lista de términos correspondientes a las columnas de la matriz TF-IDF
+    # 1) limpieza básica
+    raw = []
+    for term, score in zip(terms, scores):
+        t = term.strip().lower()
+        t = re.sub(r"\s+", " ", t)
+        t = t.replace("–", "-").replace("—", "-")
+        if t in extra_stopwords:
+            continue
+        if all(w in extra_stopwords for w in t.split()):
+            continue
+        raw.append((t, float(score)))
 
-    # Empareja cada término con su puntuación y los ordena de mayor a menor
-    ranking = sorted(zip(terms, scores), key=lambda x: x[1], reverse=True)
+    # 2) normalización/canonización: colapsar variantes hacia un término "canónico"
+    # (ajustado según el dominio Higher Education + GAI) 
+    # Básicamente análisa sinonimos de la misma palabra para no icluir varias veces el mismo término y hacer un análisis más significativo
+    canonical_rules = [
+        # ---- GAI / LLM / ChatGPT ----
+        (r"\bgai\b", "generative artificial intelligence"),
+        (r"\bgenai\b", "generative artificial intelligence"),
+        (r"\bgenerative ai\b", "generative artificial intelligence"),
+        (r"\bgenerative-ai\b", "generative artificial intelligence"),
+        (r"\bgenerative artificial\b", "generative artificial intelligence"),
+        (r"\bgenerative artificial intelligence\b", "generative artificial intelligence"),
+        (r"\blarge language model(s)?\b", "large language models"),
+        (r"\blarge-language-model(s)?\b", "large language models"),
+        (r"\bllm(s)?\b", "large language models"),
+        (r"\bchat\s?gpt\b", "chatgpt"),
+        (r"\bchat-gpt\b", "chatgpt"),
 
-    return ranking[:top_n]
+        # ---- Higher Education ----
+        (r"\bhigher education\b", "higher education"),
+        (r"\buniversity\b", "higher education"),
+        (r"\bundergraduate\b", "undergraduate education"),
+        (r"\bpostgraduate\b|\bgraduate\b", "postgraduate education"),
+
+        # ---- Academic Integrity ----
+        (r"\bacademic integrity\b", "academic integrity"),
+        (r"\bplagiarism\b|\bcheating\b", "academic integrity"),
+
+        # ---- Teaching / Learning ----
+        (r"\bteaching\b|\binstruction\b", "teaching"),
+        (r"\blearning\b|\bstudent learning\b", "learning"),
+        (r"\bassessment\b|\bevaluation\b", "assessment"),
+        (r"\bfeedback\b", "feedback"),
+    ]
+
+    def canonize(t: str) -> str:
+        out = t
+        for pat, rep in canonical_rules:
+            out = re.sub(pat, rep, out)
+        return out.strip()
+
+    # 3) agregar scores por término canónico (suma de TF-IDF)
+    canon_scores = {}
+    for t, s in raw:
+        ct = canonize(t)
+        if ct in {"generative", "artificial", "intelligence"}:
+            continue
+        canon_scores[ct] = canon_scores.get(ct, 0.0) + s
+
+    # 4) ranking por score canónico
+    ranking = sorted(canon_scores.items(), key=lambda x: x[1], reverse=True)
+
+    # Texto consolidado (normalizado parecido a como limpiaste términos)
+    text_all = " ".join(abstracts.values()).lower()
+    text_all = text_all.replace("–", "-").replace("—", "-")
+    text_all = re.sub(r"\s+", " ", text_all)
+
+    # Alias para contar frecuencia por concepto (canónico)
+    alias_map = {
+        "generative artificial intelligence": [
+            "generative artificial intelligence", "generative ai", "generative-ai", "genai", "gai"
+        ],
+        "large language models": [
+            "large language models", "large language model", "large-language-models", "large-language-model",
+            "llm", "llms"
+        ],
+        "chatgpt": ["chatgpt", "chat gpt", "chat-gpt"]
+    }
+
+    def term_frequency(canonical_term: str) -> int:
+        """
+        Cuenta ocurrencias del término canónico o sus aliases
+        usando regex tolerante a espacios/guiones.
+        """
+        targets = alias_map.get(canonical_term, [canonical_term])
+        total = 0
+        for target in targets:
+            t = target.lower().strip()
+            t_regex = re.escape(t).replace(r"\ ", r"[\s\-]+")
+            pattern = rf"\b{t_regex}\b"
+            total += len(re.findall(pattern, text_all))
+        return total
+
+    min_freq = 1
+
+    # 5) selección "inteligente" + filtro freq>0
+    selected = []
+    selected_terms = []
+
+    def is_subphrase(term: str, chosen: list[str]) -> bool:
+        for c in chosen:
+            if term == c:
+                continue
+            if term in c:
+                return True
+        return False
+
+    # preferir más palabras si score es similar
+    ranking = sorted(ranking, key=lambda x: (x[1], len(x[0].split())), reverse=True)
+
+    for term, score in ranking:
+        if is_subphrase(term, selected_terms):
+            continue
+
+        if term_frequency(term) < min_freq:
+            continue
+
+        selected.append((term, score))
+        selected_terms.append(term)
+
+        if len(selected) >= top_n:
+            break
+
+    return selected
 
 """"
 Función para calcular la precisión en el rango [-1, 1] de los nuevos términos
